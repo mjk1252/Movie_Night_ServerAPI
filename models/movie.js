@@ -15,7 +15,16 @@ const movieSchema = new Schema(
     votes: [
       {
         type: Schema.Types.ObjectId,
-        unique: true,
+        ref: "User",
+      },
+    ],
+    vote_count: {
+      type: Number,
+      default: 0,
+    },
+    bookings: [
+      {
+        type: Schema.Types.ObjectId,
         ref: "User",
       },
     ],
