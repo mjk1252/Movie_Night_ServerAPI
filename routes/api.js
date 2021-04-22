@@ -1,14 +1,17 @@
-const express = require("express");
-const Movie = require("../models/movie");
-const moment = require("moment");
+const express = require('express');
+const Movie = require('../models/movie');
+const moment = require('moment');
 const router = express.Router();
+const auth = require('../middleware/auth');
 
-router.get("/movies", async (req, res) => {
+require('dotenv').config();
+
+router.get('/movies', async (req, res) => {
   try {
     const movies = await Movie.find({
       createdAt: {
-        $gte: moment().startOf("week"),
-        $lte: moment().endOf("week"),
+        $gte: moment().startOf('week'),
+        $lte: moment().endOf('week'),
       },
     });
 
@@ -18,7 +21,7 @@ router.get("/movies", async (req, res) => {
   }
 });
 
-router.post("/movies", async (req, res) => {
+router.post('/movies', auth, async (req, res) => {
   try {
     const movieID = req.body.movieID;
     const votingPerson = req.body.votingPerson;
@@ -26,11 +29,11 @@ router.post("/movies", async (req, res) => {
     const foundMovie = await Movie.findOne({ _id: movieID });
 
     if (!foundMovie) {
-      throw new Error("Server error finding movie");
+      throw new Error('Server error finding movie');
     }
 
     if (votingPerson === null) {
-      throw new Error("Please Login");
+      throw new Error('Please Login');
     }
 
     if (!foundMovie.votes.includes(votingPerson)) {
@@ -51,13 +54,13 @@ router.post("/movies", async (req, res) => {
   }
 });
 
-router.post("/submit", async (req, res) => {
+router.post('/submit', auth, async (req, res) => {
   try {
     const foundMovie = await Movie.findOne({ movieName: req.body.movieName });
 
     if (foundMovie) {
       if (
-        foundMovie._doc.createdAt < moment().subtract(1, "week").startOf("week")
+        foundMovie._doc.createdAt < moment().subtract(1, 'week').startOf('week')
       ) {
         foundMovie.remove();
 
@@ -70,11 +73,22 @@ router.post("/submit", async (req, res) => {
         res.json(savedMovie._doc);
         return;
       } else if (
-        foundMovie._doc.createdAt > moment().subtract(1, "week").startOf("week")
+        foundMovie._doc.createdAt > moment().subtract(1, 'week').startOf('week')
       ) {
         res.json(foundMovie._doc);
         return;
       }
+    }
+
+    const movieCount = await Movie.countDocuments({
+      createdAt: {
+        $gte: moment().startOf('week'),
+        $lte: moment().endOf('week'),
+      },
+    });
+
+    if (movieCount >= 4) {
+      throw new Error('4 Movie Limit Reached');
     }
 
     const newMovie = new Movie({
@@ -90,17 +104,17 @@ router.post("/submit", async (req, res) => {
   }
 });
 
-router.get("/book", async (req, res) => {
+router.get('/book', async (req, res) => {
   try {
     const movie = await Movie.find({
       createdAt: {
-        $gte: moment().subtract(1, "week").startOf("week"),
-        $lte: moment().subtract(1, "week").endOf("week"),
+        $gte: moment().subtract(1, 'week').startOf('week'),
+        $lte: moment().subtract(1, 'week').endOf('week'),
       },
     })
       .sort({ vote_count: -1 })
       .limit(1)
-      .populate("bookings");
+      .populate('bookings');
 
     res.json(movie);
   } catch (err) {
@@ -108,7 +122,7 @@ router.get("/book", async (req, res) => {
   }
 });
 
-router.post("/book", async (req, res) => {
+router.post('/book', auth, async (req, res) => {
   try {
     const movieID = req.body.movieID;
     const bookingPerson = req.body.bookingPerson;
@@ -116,11 +130,11 @@ router.post("/book", async (req, res) => {
     const foundMovie = await Movie.findOne({ _id: movieID });
 
     if (!foundMovie) {
-      throw new Error("Server error finding movie");
+      throw new Error('Server error finding movie');
     }
 
     if (bookingPerson === null) {
-      throw new Error("Please Login");
+      throw new Error('Please Login');
     }
 
     if (!foundMovie.bookings.includes(bookingPerson)) {
